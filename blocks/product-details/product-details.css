@@ -1,6 +1,14 @@
 /* stylelint-disable no-empty-source */
 /* stylelint-disable selector-class-pattern */
 
+@import 'carousel.css';
+@import 'gallery-grid.css';
+@import 'overlay.css';
+@import 'price-range.css';
+@import 'product.css';
+@import 'swatches.css';
+@import 'zoom.css';
+
 .product-details__wrapper {
   display: grid;
   grid-template-columns: repeat(var(--grid-1-columns), 1fr);
