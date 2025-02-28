@@ -2,8 +2,8 @@
   "project": "Boilerplate",
   "plugins": [
     {
-      "id": "library",
-      "title": "Library",
+      "id": "custom library",
+      "title": "Custom Library",
       "environments": ["edit"],
       "url": "/tools/sidekick/library.html",
       "includePaths": ["**.docx**"]
