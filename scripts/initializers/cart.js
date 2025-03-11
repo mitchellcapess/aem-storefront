@@ -15,5 +15,17 @@ await initializeDropin(async () => {
     },
   };
 
-  return initializers.mountImmediately(initialize, { langDefinitions });
+  await initializers.mountImmediately(initialize, {
+    langDefinitions,
+    models: {
+      CartModel: {
+        transformer: (data) => {
+          const { gift_message: giftMessage } = data;
+          return {
+            giftMessage,
+          };
+        },
+      },
+    },
+  });
 })();

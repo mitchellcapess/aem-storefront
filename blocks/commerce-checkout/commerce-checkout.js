@@ -7,6 +7,7 @@
 // Dropin Tools
 import { events } from '@dropins/tools/event-bus.js';
 import { initializers } from '@dropins/tools/initializer.js';
+import { fetchGraphQl, setFetchGraphQlHeader } from '@dropins/tools/fetch-graphql.js';
 
 // Dropin Components
 import {
@@ -125,6 +126,89 @@ export default async function decorate(block) {
     setMetaTags('Order Confirmation');
     document.title = 'Order Confirmation';
   });
+  
+  const giftOptionsField = document.createElement('gift-options-field');
+  giftOptionsField.setAttribute('loading', 'true');
+
+  giftOptionsField.submitGiftMessageHandler = async (event) => {
+    event.preventDefault();
+
+    const form = event.target;
+    const formData = new FormData(form);
+    const cartId = formData.get('cartId');
+    const fromName = formData.get('fromName');
+    const toName = formData.get('toName');
+    const giftMessage = formData.get('giftMessage');
+
+    giftOptionsField.setAttribute('loading', 'true');
+    
+    const giftMessageInput = {
+      from: fromName,
+      to: toName,
+      message: giftMessage
+    };
+
+    console.log('form data', cartId, fromName, toName, giftMessage);
+
+    const existingSuccessMessage = form.querySelector('.gift-message-success');
+    const existingErrorMessage = form.querySelector('.gift-message-error');
+    if (existingSuccessMessage) {
+      existingSuccessMessage.remove();
+    }
+    if (existingErrorMessage) {
+      existingErrorMessage.remove();
+    }
+
+    try {
+      await fetchGraphQl(`
+        mutation SET_GIFT_OPTIONS($cartId: String!, $giftMessage: GiftMessageInput!,$giftReceiptIncluded: Boolean!) {
+          setGiftOptionsOnCart(input: {
+            cart_id: $cartId,
+            gift_message: $giftMessage,
+            gift_receipt_included: $giftReceiptIncluded,
+            printed_card_included: false
+          }) {
+            cart {
+              id
+              gift_message {
+                from
+                to
+                message
+              }
+            }
+          }
+        }
+      `,
+      {
+        variables: {
+          cartId,
+          giftMessage: giftMessageInput,
+          giftReceiptIncluded: false
+        },
+      });
+
+      if(fromName && toName && giftMessage) {
+        const successMessage = document.createElement('div');
+        successMessage.className = 'gift-message-success';
+        successMessage.textContent = 'Gift message successfully added!';
+        form.appendChild(successMessage);
+        giftOptionsField.removeAttribute('loading', 'true');
+        updateGiftMessageOverview(fromName, toName, giftMessage);
+      } else {
+        const errorMessage = document.createElement('div');
+        errorMessage.className = 'gift-message-error';
+        errorMessage.textContent = 'Failed to add gift message. Please try again.';
+        form.appendChild(errorMessage);
+        giftOptionsField.removeAttribute('loading', 'true');
+      }
+
+      if (typeof refreshCart === 'function') {
+        await refreshCart();
+      }
+    } catch (error) {
+      console.error('Error setting gift options:', error);
+    }
+  };
 
   const DEBOUNCE_TIME = 1000;
   const LOGIN_FORM_NAME = 'login-form';
@@ -151,9 +235,11 @@ export default async function decorate(block) {
           <div class="checkout__block checkout__payment-methods"></div>
           <div class="checkout__block checkout__billing-form"></div>
           <div class="checkout__block checkout__place-order"></div>
+          <div class="checkout__block checkout__gift-message"></div>
         </div>
         <div class="checkout__aside">
           <div class="checkout__block checkout__order-summary"></div>
+          <div class="checkout__block checkout__gift-message-overview"></div>
           <div class="checkout__block checkout__cart-summary"></div>
         </div>
       </div>
@@ -192,9 +278,34 @@ export default async function decorate(block) {
   const $cartSummary = checkoutFragment.querySelector(
     '.checkout__cart-summary',
   );
+  const $giftMessage = checkoutFragment.querySelector(
+    '.checkout__gift-message',
+  );
+  const $giftMessageOverview = checkoutFragment.querySelector(
+    '.checkout__gift-message-overview',
+  );
   const $placeOrder = checkoutFragment.querySelector('.checkout__place-order');
 
   block.appendChild(checkoutFragment);
+
+  // Gift Message Rendering
+  $giftMessage.appendChild(giftOptionsField);
+
+  function updateGiftMessageOverview(fromName, toName, giftMessage) {
+    $giftMessageOverview.innerHTML = ''; // Clear any existing content
+  
+    if (fromName && toName && giftMessage) {
+      const giftMessageContent = document.createElement('div');
+      giftMessageContent.className = 'gift-message-content';
+      giftMessageContent.innerHTML = `
+        <strong>Gift Message:</strong>
+        <p><strong>From:</strong> ${fromName}</p>
+        <p><strong>To:</strong> ${toName}</p>
+        <p><strong>Message:</strong> ${giftMessage}</p>
+      `;
+      $giftMessageOverview.appendChild(giftMessageContent);
+    }
+  }
 
   // Global state
   let initialized = false;
@@ -359,7 +470,7 @@ export default async function decorate(block) {
           CartProvider.render(Coupons)(coupons);
 
           ctx.appendChild(coupons);
-        },
+        }
       },
     })($orderSummary),
 
@@ -905,4 +1016,19 @@ export default async function decorate(block) {
   events.on('checkout/initialized', handleCheckoutInitialized, { eager: true });
   events.on('checkout/updated', handleCheckoutUpdated);
   events.on('order/placed', handleOrderPlaced);
+  events.on('cart/data', data => {
+    if (!data) return;
+
+    const { id, orderAttributes, giftMessage } = data;
+
+    giftOptionsField.setAttribute('cartId', id);
+    if (giftMessage) {
+      giftOptionsField.setAttribute('giftmessage', giftMessage.message);
+      giftOptionsField.setAttribute('fromname', giftMessage.from);
+      giftOptionsField.setAttribute('toname', giftMessage.to); 
+    } else {
+      console.error("Gift message not found in cart data. Ensure you're using the correct attribute name in your cart template.");
+    }
+    giftOptionsField.removeAttribute('loading');
+  }, { eager: true });
 }
