@@ -109,6 +109,7 @@ function renderProduct(product, config, block) {
     </div>
     <div class="details">
       <h1>${name}</h1>
+      <p class="highlight-text">${config['highlight-text'] || ''}</p>
       <div class="price">${renderPrice(product, priceFormatter.format)}</div>
       <div class="actions">
         ${config['details-button'] ? `<a href="/products/${urlKey}/${sku}" class="button primary">Details</a>` : ''}
@@ -142,10 +143,12 @@ export default async function decorate(block) {
   config['details-button'] = !!(config['details-button'] || config['details-button'] === 'true');
   config['cart-button'] = !!(config['cart-button'] || config['cart-button'] === 'true');
 
+  console.log(config);
+
   renderPlaceholder(config, block);
 
   const { products } = await performCatalogServiceQuery(productHighlightQuery, {
-    sku: config.sku,
+    sku: config.sku
   });
   if (!products || !products.length > 0 || !products[0].sku) {
     return;

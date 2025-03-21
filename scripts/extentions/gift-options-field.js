@@ -1,7 +1,13 @@
-import { Button, Input, TextArea, Header, provider as UI } from '@dropins/tools/components.js';
+import { Button, Input, TextArea, provider as UI } from '@dropins/tools/components.js';
 
 const sdkStyle = document.querySelector('style[data-dropin="sdk"]');
-const checkoutStyle = document.querySelector('style[data-dropin="checkout"]');
+const customStyle = document.createElement("style"); 
+
+customStyle.textContent = `
+      #fromName {
+        color: red;
+      }
+    `
 
 class giftOptionsField extends HTMLElement {
     static observedAttributes = ['cartid', 'giftmessage', 'fromname', 'toname', 'loading'];
@@ -116,8 +122,8 @@ class giftOptionsField extends HTMLElement {
                 disabled: false
             })(submitWrapper);
 
+        this.shadowRoot.appendChild(customStyle);
         this.shadowRoot.appendChild(sdkStyle.cloneNode(true));
-        this.shadowRoot.appendChild(checkoutStyle.cloneNode(true));
     }
 }
 

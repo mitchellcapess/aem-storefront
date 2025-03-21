@@ -193,7 +193,11 @@ export default async function decorate(block) {
         successMessage.textContent = 'Gift message successfully added!';
         form.appendChild(successMessage);
         giftOptionsField.removeAttribute('loading', 'true');
-        updateGiftMessageOverview(fromName, toName, giftMessage);
+
+        const giftMessageEvent = new CustomEvent('giftMessageUpdated', {
+          detail: giftMessageInput
+        });
+        document.dispatchEvent(giftMessageEvent);
       } else {
         const errorMessage = document.createElement('div');
         errorMessage.className = 'gift-message-error';
@@ -239,7 +243,6 @@ export default async function decorate(block) {
         </div>
         <div class="checkout__aside">
           <div class="checkout__block checkout__order-summary"></div>
-          <div class="checkout__block checkout__gift-message-overview"></div>
           <div class="checkout__block checkout__cart-summary"></div>
         </div>
       </div>
@@ -281,31 +284,12 @@ export default async function decorate(block) {
   const $giftMessage = checkoutFragment.querySelector(
     '.checkout__gift-message',
   );
-  const $giftMessageOverview = checkoutFragment.querySelector(
-    '.checkout__gift-message-overview',
-  );
   const $placeOrder = checkoutFragment.querySelector('.checkout__place-order');
 
   block.appendChild(checkoutFragment);
 
   // Gift Message Rendering
   $giftMessage.appendChild(giftOptionsField);
-
-  function updateGiftMessageOverview(fromName, toName, giftMessage) {
-    $giftMessageOverview.innerHTML = ''; // Clear any existing content
-  
-    if (fromName && toName && giftMessage) {
-      const giftMessageContent = document.createElement('div');
-      giftMessageContent.className = 'gift-message-content';
-      giftMessageContent.innerHTML = `
-        <strong>Gift Message:</strong>
-        <p><strong>From:</strong> ${fromName}</p>
-        <p><strong>To:</strong> ${toName}</p>
-        <p><strong>Message:</strong> ${giftMessage}</p>
-      `;
-      $giftMessageOverview.appendChild(giftMessageContent);
-    }
-  }
 
   // Global state
   let initialized = false;
@@ -466,11 +450,22 @@ export default async function decorate(block) {
         },
         Coupons: (ctx) => {
           const coupons = document.createElement('div');
-
           CartProvider.render(Coupons)(coupons);
-
           ctx.appendChild(coupons);
-        }
+
+          const giftMessage = document.createElement('div');
+          giftMessage.classList.add('gift-message-summary__gift-message');
+          giftMessage.innerHTML = '';
+          ctx.prependSibling(giftMessage);
+
+          document.addEventListener('giftMessageUpdated', (event) => {
+            const { message } = event.detail;
+            giftMessage.innerHTML = 
+              `<span class="cart-order-summary__label">Message: ${message}</span>`;
+        });
+
+          console.log(ctx);
+        },
       },
     })($orderSummary),
 
